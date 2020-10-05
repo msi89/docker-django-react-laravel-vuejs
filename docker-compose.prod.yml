@@ -1,0 +1,115 @@
+version: "3"
+
+services:
+  db:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=homestead
+      - POSTGRES_PASSWORD=secret
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data/
+
+  django:
+    build:
+      context: ./django
+      dockerfile: Dockerfile
+    volumes:
+      - ./django:/app/django
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=false
+      - DATABASE_NAME=homestead
+      - DATABASE_USER=homestead
+      - DATABASE_PASSWORD=secret
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - VIRTUAL_HOST=django.localhost
+    depends_on:
+      - db
+    networks:
+      - app
+
+  laravel:
+    build:
+      context: ./laravel
+      dockerfile: Dockerfile
+    environment:
+      DB_CONNECTION: pgsql
+      DB_DATABASE: homestead
+      DB_USERNAME: homestead
+      DB_PASSWORD: secret
+      DB_HOST: db
+      DB_PORT: 5432
+      VIRTUAL_HOST: laravel.localhost
+    ports:
+      - 8001:8000
+    volumes:
+      - ./laravel:/app/laravel
+    depends_on:
+      - db
+    networks:
+      - app
+
+  reactjs:
+    build:
+      context: ./reactjs
+      args:
+        - API_URL=http://django.localhost/api
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VIRTUAL_HOST=localhost
+    volumes:
+      - ./reactjs:/app/reactjs/:cached
+    ports:
+      - 3000:80
+    depends_on:
+      - django
+    networks:
+      - app
+
+  vuejs:
+    build:
+      context: ./vuejs
+      args:
+        - API_URL=http://laravel.localhost/api
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VIRTUAL_HOST=vue.localhost
+    volumes:
+      - ./vuejs:/app/vuejs/:cached
+    ports:
+      - 8080:80
+    depends_on:
+      - laravel
+    networks:
+      - app
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=homestead
+      - PGADMIN_DEFAULT_PASSWORD=secret
+      - VIRTUAL_HOST=pgadmin.localhost
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - 8002:80
+
+  nginx-proxy:
+    restart: always
+    image: jwilder/nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    ports:
+      - 80:80
+
+volumes:
+  postgresql-data:
+  pgadmin-data:
+
+networks:
+  app:
+    driver: bridge

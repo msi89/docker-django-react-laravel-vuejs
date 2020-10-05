@@ -1,0 +1,106 @@
+version: "3.7"
+
+services:
+  django:
+    build:
+      context: ./django
+      dockerfile: Dockerfile
+    volumes:
+      - ./django:/app/django
+    ports:
+      - 8000:8000
+    environment:
+      - DATABASE_NAME=homestead
+      - DATABASE_USER=homestead
+      - DATABASE_PASSWORD=secret
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+    depends_on:
+      - db
+    networks:
+      - app
+
+  laravel:
+    build:
+      context: ./laravel
+      dockerfile: Dockerfile
+    environment:
+      DB_CONNECTION: pgsql
+      DB_DATABASE: homestead
+      DB_USERNAME: homestead
+      DB_PASSWORD: secret
+      DB_HOST: db
+      DB_PORT: 5432
+    ports:
+      - 8001:8000
+    volumes:
+      - ./laravel:/app/laravel
+    depends_on:
+      - db
+    networks:
+      - app
+
+  reactjs:
+    build:
+      context: ./reactjs
+      dockerfile: Dockerfile
+      args:
+        - API_URL=http://localhost:8000/api
+    tty: true
+    ports:
+      - 3000:3000
+    volumes:
+      - ./reactjs:/app/reactjs
+    depends_on:
+      - django
+    networks:
+      - app
+
+  vuejs:
+    build:
+      context: ./vuejs
+      dockerfile: Dockerfile
+      args:
+        - API_URL=http://localhost:8001/api
+    tty: true
+    ports:
+      - 8080:8080
+    volumes:
+      - ./vuejs:/app/vuejs
+    depends_on:
+      - laravel
+    networks:
+      - app
+
+  db:
+    image: postgres:12
+    restart: always
+    environment:
+      POSTGRES_USER: homestead
+      POSTGRES_PASSWORD: secret
+    ports:
+      - 5433:5432
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data/
+    networks:
+      - app
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=homestead
+      - PGADMIN_DEFAULT_PASSWORD=secret
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - 8002:80
+    networks:
+      - app
+
+volumes:
+  postgresql-data:
+  pgadmin-data:
+
+networks:
+  app:
+    driver: bridge
