@@ -18,6 +18,8 @@ function App() {
         >
           Learn React with Ckam
         </a>
+        <br />
+        app url: {process.env.REACT_APP_API_URL}
       </header>
     </div>
   );

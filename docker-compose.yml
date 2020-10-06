@@ -4,7 +4,8 @@ services:
   django:
     build:
       context: ./django
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
+    container_name: django
     volumes:
       - ./django:/app/django
     ports:
@@ -15,38 +16,46 @@ services:
       - DATABASE_PASSWORD=secret
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
+      - VIRTUAL_HOST=django.localhost
     depends_on:
       - db
     networks:
       - app
+    restart: unless-stopped
 
   laravel:
     build:
       context: ./laravel
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
+    container_name: laravel
     environment:
-      DB_CONNECTION: pgsql
-      DB_DATABASE: homestead
-      DB_USERNAME: homestead
-      DB_PASSWORD: secret
-      DB_HOST: db
-      DB_PORT: 5432
+      - DB_CONNECTION=pgsql
+      - DB_DATABASE=homestead
+      - DB_USERNAME=homestead
+      - DB_PASSWORD=secret
+      - DB_HOST=db
+      - DB_PORT=5432
+      - VIRTUAL_HOST=laravel.localhost
     ports:
-      - 8001:8000
+      - 5000:8000
     volumes:
       - ./laravel:/app/laravel
     depends_on:
       - db
     networks:
       - app
+    restart: unless-stopped
 
   reactjs:
     build:
       context: ./reactjs
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
       args:
         - API_URL=http://localhost:8000/api
+    container_name: reactjs
     tty: true
+    environment:
+      - VIRTUAL_HOST=react.localhost
     ports:
       - 3000:3000
     volumes:
@@ -55,14 +64,18 @@ services:
       - django
     networks:
       - app
+    restart: unless-stopped
 
   vuejs:
     build:
       context: ./vuejs
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
       args:
-        - API_URL=http://localhost:8001/api
+        - API_URL=http://localhost:5000/api
+    container_name: vuejs
     tty: true
+    environment:
+      - VIRTUAL_HOST=vue.localhost
     ports:
       - 8080:8080
     volumes:
@@ -71,10 +84,12 @@ services:
       - laravel
     networks:
       - app
+    restart: unless-stopped
 
   db:
     image: postgres:12
     restart: always
+    container_name: postgresql
     environment:
       POSTGRES_USER: homestead
       POSTGRES_PASSWORD: secret
@@ -87,13 +102,27 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
+    container_name: pgadmin
     environment:
       - PGADMIN_DEFAULT_EMAIL=homestead
       - PGADMIN_DEFAULT_PASSWORD=secret
+      - VIRTUAL_HOST=pgadmin.localhost
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     ports:
       - 8002:80
+    networks:
+      - app
+
+  nginx-proxy:
+    restart: always
+    container_name: nginx-proxy
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    ports:
+      - 80:80
     networks:
       - app
 

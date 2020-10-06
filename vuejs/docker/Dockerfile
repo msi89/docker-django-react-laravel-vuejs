@@ -7,7 +7,5 @@ WORKDIR /app/vuejs
 
 COPY . .
 
-RUN yarn install --silent
-
 EXPOSE 8080
 CMD yarn serve
